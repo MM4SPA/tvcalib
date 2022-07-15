@@ -1,0 +1,24 @@
+name: sn-calibration-minimal
+channels:
+  - pytorch
+dependencies:
+  - python=3.9
+  - pytorch=1.11.0 # py3.9_cuda11.3_cudnn8.2.0_0
+  - torchvision=0.12.0
+  - cudatoolkit=11.3
+  - pip
+  - pip:
+    - kornia==0.6.3
+    - pytorch-lightning==1.5.10
+    - matplotlib==3.5.1 
+    - opencv-python-headless==4.5.5.62
+    - jupyterlab==3.2.9
+    - black
+    - numpy==1.19.5
+    - pandas==1.4.1 
+    - pyyaml==6.0
+    - scipy==1.8.0
+    - seaborn==0.11.2
+    - soccernet==0.1.34 # 0.1.28
+    - tabulate==0.8.9
+    - tqdm==4.62.3
