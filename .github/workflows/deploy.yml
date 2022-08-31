@@ -3,11 +3,11 @@ name: deploy
 on:
   push:
     branches:
-      - gh-pages
+      - project_source
       - main
   pull_request:
     branches:
-      - gh-pages
+      - project_source
       - main
 
 jobs:
