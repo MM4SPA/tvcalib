@@ -1,0 +1,14 @@
+<div style="margin-top: 5rem;">
+    <a class="anchor" id="workflow"></a>
+    <h3>System Overview</h3>
+    {%- assign image_path_workflow = page.workflow.image | prepend: 'assets/img/' -%}
+    {% include figure.html
+    path=image_path_workflow
+    class=profile_image_class
+    alt=page.profile.image -%}
+
+    <p>Segment localization performs instance segmentation and selects appropriate points with respective label from a
+        known 3D object, and our main contribution TVCalib, which predicts camera parameters by iteratively minimizing
+        the segment reprojection loss.</p>
+
+</div>
