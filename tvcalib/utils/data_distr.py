@@ -1,5 +1,3 @@
-from re import A
-from typing import Tuple
 import torch
 
 
@@ -43,32 +41,4 @@ class FeatureScalerZScore(torch.nn.Module):
 
     def normalize(self, x):
         z = (x - self.loc) / self.scale
-        return z
-
-
-class FeatureScalerLinear(torch.nn.Module):
-    def __init__(self, c, d, a=-1.0, b=1.0) -> None:
-        # Transforms data from distribution parameterized by loc from [c, d] -> [a, b]
-        super(FeatureScalerLinear, self).__init__()
-        self.c = c
-        self.d = d
-
-        self.a = a
-        self.b = b
-
-    def forward(self, z):
-        """
-        Args:
-            z (Tensor): tensor of size (B, *) to be denormalized.
-        Returns:
-            x: tensor.
-        """
-        return self.denormalize(z)
-
-    def denormalize(self, z):
-        x = (self.d - self.c) * (z - self.a) / (self.b - self.a) + self.c
-        return x
-
-    def normalize(self, x):
-        z = (self.b - self.a) * (x - self.c) / (self.d - self.c) + self.a
         return z

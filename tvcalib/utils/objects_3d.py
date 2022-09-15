@@ -109,7 +109,7 @@ class SoccerPitchSN:
         "Small rect. left main": (254, 173, 225),
         "Small rect. left top": (87, 72, 39),
         "Small rect. right bottom": (122, 0, 255),
-        "Small rect. right main": (255, 255, 255),
+        "Small rect. right main": (128, 128, 128), # (255, 255, 255)
         "Small rect. right top": (153, 23, 153),
     }
 
@@ -1493,13 +1493,23 @@ class Meshgrid(Abstract3dModel):
 
 
 class SoccerPitchLineCircleSegments(Abstract3dModel):
-    def __init__(self, base_field, device="cpu", N_cstar=128) -> None:
+    def __init__(
+        self,
+        base_field,
+        device="cpu",
+        N_cstar=128,
+        sampling_factor_lines=0.2,
+        sampling_factor_circles=0.8,
+    ) -> None:
 
         if not (
             isinstance(base_field, SoccerPitchSNCircleCentralSplit)
             or isinstance(base_field, SoccerPitchSN)
         ):
             raise NotImplementedError
+
+        self.sampling_factor_lines = sampling_factor_lines
+        self.sampling_factor_circles = sampling_factor_circles
 
         self._field_sncalib = base_field
 
@@ -1509,13 +1519,16 @@ class SoccerPitchLineCircleSegments(Abstract3dModel):
         self.points = torch.from_numpy(np.stack(self._field_sncalib.points())).float().to(device)
 
         # sampled points for each segment Dict[str: torch.tensor of shape (*, 3)]
-        self.points_sampled = self._field_sncalib.sample_field_points()
+        self.points_sampled = self._field_sncalib.sample_field_points(
+            self.sampling_factor_lines, self.sampling_factor_circles
+        )
         self.points_sampled = {
             k: torch.from_numpy(np.stack(v)).float().to(device)
             for k, v in self.points_sampled.items()
         }
         self.points_sampled_palette = self._field_sncalib.palette
         self.segment_names = set(self.points_sampled_palette.keys())
+        self.cmap_01 = {k: [c / 255.0 for c in v] for k, v in self.points_sampled_palette.items()}
 
         self.line_collection: List[LineCollection] = []
         self.line_segments = []  # (3, S, 2)

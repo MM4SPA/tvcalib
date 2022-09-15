@@ -43,8 +43,6 @@ def distance_line_pointcloud_3d(
     r1: torch.Tensor,
     pc: torch.Tensor,
     reduce: Union[None, str] = None,
-    eps=1e-6,
-    nan_check=False,
 ) -> torch.Tensor:
     """
     Line to point cloud distance with arbitrary leading dimensions.
@@ -64,9 +62,7 @@ def distance_line_pointcloud_3d(
     num_points = pc.shape[-2]
     _sub = r1 - pc  # (*, B, A, 3)
 
-    # assert torch.allclose(e1.repeat(1, num_points, 1), e1.repeat_interleave(num_points, dim=1))
     cross = torch.cross(e1.repeat_interleave(num_points, dim=-2), _sub, dim=-1)  # (*, B, A, 3)
-    # cross = torch.cross(e1.repeat(1, num_points, 1), _sub, dim=-1)  # (*, B, A, 3)
 
     e1_norm = torch.linalg.norm(e1, dim=-1)
     cross_norm = torch.linalg.norm(cross, dim=-1)
@@ -76,11 +72,6 @@ def distance_line_pointcloud_3d(
         return d.mean(dim=-1)  # (*, B, )
     elif reduce == "min":
         return d.min(dim=-1)[0]  # (*, B, )
-
-    # # no reduction
-    # if nan_check:
-    #     if torch.isnan(d).any().item():
-    #         raise RuntimeWarning("NaNs in distance_line_pointcloud_3d")
 
     return d  # (B, A)
 
@@ -113,81 +104,3 @@ def distance_point_pointcloud(points: torch.Tensor, pointcloud: torch.Tensor) ->
     # distance to nearest point from point cloud (batch_size, T, 1, S, N, N_star)
     distances = distances.min(dim=-1)[0]
     return distances
-
-
-def distance_finite_line_pointcloud(lp1: torch.Tensor, lp2: torch.Tensor, pc: torch.Tensor):
-    """Given a batch (of size '*') of B lines and a batch of A points (point cloud), computes the distance between each finite line and all points.
-
-    Todo: Test!
-
-    https://monkeyproofsolutions.nl/wordpress/how-to-calculate-the-shortest-distance-between-a-point-and-a-line/
-
-    e = lp2 - lp1
-    t0 = dot(pc - lp1, e) / dot(e, e)
-
-    # points on line from orthogonal projection
-    pnt_intersect = lp1 + t0 * e
-
-
-    distance for finite lines:
-    case 0: 0 < t0 < 1 -> norm(pc - pnt_intersect)
-    case 1: t0 <= 0 -> norm(pc - lp1)
-    case 2: t0 >= 1 -> norm(pc - lp2)
-
-    distance for infinite lines: always case 0
-
-    Args:
-        lp1 (torch.tensor): start point of line of shape (batch_dim, temporal_dim, B, 1, D)
-        lp2 (torch.tensor): end point of line of shape (batch_dim, temporal_dim, B, 1, D)
-        pc (torch.tensor): point cloud of shape (batch_dim, temporal_dim, B, A, D)
-    Returns:
-        distance of an finite line to given point clouds (return tensor of shape (B, A))
-    """
-
-    batch_dim, temporal_dim, S, _, D = lp1.shape
-    lp1 = lp1.view(batch_dim * temporal_dim, S, 1, D)
-    lp2 = lp2.view(batch_dim * temporal_dim, S, 1, D)
-
-    N = pc.shape[-2]
-    pc = pc.view(batch_dim * temporal_dim, S, N, D)
-
-    lp12 = lp2 - lp1
-    BS, B, _, D = lp12.shape  # (BS, B, 1, D)
-    A = pc.shape[-2]  # pc of shape (BS, 1, A, D)
-
-    lp1_rep = lp1.repeat(1, 1, A, 1)
-    lp2_rep = lp2.repeat(1, 1, A, 1)
-
-    lp1pc = pc - lp1_rep  # (BS, B, A, D)
-    t0 = torch.bmm(
-        lp1pc.reshape(BS * B * A, 1, D), lp2_rep.reshape(BS * B * A, D, 1)
-    )  # batch-wise dot product
-
-    t0 = t0.view(BS, B, A, 1)
-
-    dot_lp12 = torch.bmm(lp12.view(BS * B, 1, D), lp12.view(BS * B, 1, D).transpose(-1, -2)).view(
-        BS, B, 1, 1
-    )
-
-    t0 = t0 / dot_lp12  # (BS, B, A, 1)
-
-    # case 0 is default
-    pnt_intersect = lp1_rep + t0 * lp12.repeat(1, 1, A, 1)  # (BS, B, A, D)
-
-    d = torch.linalg.norm(pc - pnt_intersect, dim=-1)  # (BS, B, A, 3) -> (BS, B, A)
-    # flatten for easy mask replace
-    d = d.view(BS * B * A)
-    t0 = t0.view(BS * B * A)
-
-    # replace
-    d_case1 = torch.linalg.norm(pc - lp1.repeat(1, 1, A, 1), dim=-1).view(BS * B * A)
-    d_case2 = torch.linalg.norm(pc - lp2.repeat(1, 1, A, 1), dim=-1).view(BS * B * A)
-
-    mask_case1 = t0 < 0
-    d[mask_case1] = d_case1[mask_case1]
-    mask_case2 = t0 > 1
-    d[mask_case2] = d_case2[mask_case2]
-    d = d.view(BS, B, A)
-
-    d = d.view(batch_dim, temporal_dim, B, A)
-    return d

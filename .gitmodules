@@ -1,0 +1,3 @@
+[submodule "sn_segmentation"]
+	path = sn_segmentation
+	url = https://github.com/jtheiner/sn-calibration-segmentation

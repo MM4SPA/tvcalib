@@ -1,141 +1,145 @@
 # TVCalib: Camera Calibration for Sports Field Registration in Soccer
 
-This repository contains the implementation for TVCalib and its application and evaluation on the [SoccerNet Calibration Challenge](https://www.soccer-net.org/tasks/calibration).
+<div align="center">
 
-### Table of Contents
-1. [Camera Calibration Part](#Camera-Calibration-Part)
-2. [Segment Localization Part](#Segment-Localization-Part)
-3. [Post-processing, Visualization, and Evaluation](#Post-processing,-Visualization,-and-Evaluation)
-5. [Resource Files](#Resource-Files)
-6. [Reproduce Paper Results](#Reproduce-Results)
+[![Project](https://img.shields.io/badge/jtheiner.github.io-TVCalib-538135.svg?style=for-the-badge)](https://jtheiner.github.io/tvcalib/)
+[![Conference](https://img.shields.io/badge/WACV-2023-6b8bc7.svg?style=for-the-badge)](https://arxiv.org/abs/2207.11709)
+[![arXiv](https://img.shields.io/badge/arXiv-2207.11709-b31b1b.svg?style=for-the-badge)](https://arxiv.org/abs/2207.11709)
+
+</div>
+
+## Contents
+- [Inference / Demo](#inference)
+- [Reproduce Paper Results](#reproduce-paper-results)
+    - [Datasets](#datasets)
+    - [Evaluation](#evaluation)
+- [Requirments](#requirements)
+
+<hr>  
 
 
-## Camera Calibration Part
+# Inference
+Given a bunch of images, this [jupyter notebook](`inference.ipynb`) applies semantic segmentation, point selection, estimation of camera parameters, and visualization. The pretrained segmentation model can be downloaded here:
+```bash
+mkdir data/segment_localization 
+wget https://tib.eu/cloud/s/x68XnTcZmsY4Jpg/download/train_59.pt -O data/segment_localization/train_59.pt
+```
 
-To predict all individual camera parameters from the results of the segment localization run: `optimize.py`:
+# [Visualize Results](tvcalib/visualize_per_sample_output.ipynb)
+
+
+# Reproduce Paper Results
+
+We provide scripts (`scripts/experiments_wacv23`) to reproduce the provided results of the paper for the baseline and *TVCalib*.
+
+```bash
+
+# SN segmentation model & retrained model
+scripts/experiments_wacv23/run_segmentation.sh
+# choice of self-verification parameter
+scripts/experiments_wacv23/run_sncalib-valid-all-tau_tvcalib.sh
+# TVCalib & baseline
+scripts/experiments_wacv23/run_wc14-test-center_tvcalib_baseline.sh
+scripts/experiments_wacv23/run_sncalib-test-center_tvcalib_baseline.sh
+scripts/experiments_wacv23/run_lens_distortion_tvcalib.sh
+
+scripts/experiments_wacv23/run_wc14-test-center_manual.sh
+
+# +++ further ablation studies
+scripts/experiments_wacv23/run_sncalib-test-all_tvcalib.sh
+
+# table 1
+python scripts/experiments_wacv23/tex/generate_table_sncalib-center.py
+# table 2, 3
+python scripts/experiments_wacv23/tex/generate_table_wc14-center.py
+# table appendix: lens distortion
+python scripts/experiments_wacv23/tex/generate_table_lens_distortion.py
+# figure 2: segment reprojection loss
+python scripts/experiments_wacv23/figures/visualize_ndc_losses_multiple_datasets.py
+# figure 3: sn-calib-test (main left, center, right)
+python scripts/experiments_wacv23/figures/summarize_results_sncalib-test-all.py
+# evaluate projection error
+python -m scripts.experiments_wacv23.tex.prepare_iou_results
+```
+
+## Evaluation
+
+### Segment Reprojection Error
+See [https://github.com/SoccerNet/sn-calibration](https://github.com/SoccerNet/sn-calibration#evaluation-1) for details on the evaluation metric.
+
+`python -m evaluation.eval_projection`
+
 Arguments:
-- `--hparams`: Path to config filem, e.g., `configs/val_main_center_gt.json` (see details below)
-- `--output_dir`: Default `./experiments`; extends with (hparams.stem), e.g., `val_main_center_gt`
-- `--log_per_step`: If given, log inforamtion like loss during each optimization step for each sample
-- `--visualize_results`: Plot results (3d projecteded pitch with overlayed input image and points) for each batch
-- `--device`: `cuda` or `cpu`, default ``cuda`
+- `--dir_dataset`: Path to ground-truth annotations, i.e., a folder with `<image_id>.json`
+- `--filter_gt_camera_type <str>`: Evaluate on a subset according to the available camera types in `<dir_dataset>/match_info_cam_gt.json`
+- `--per_sample_output`: File path to `per_sample_output_json`
+- `--width <int> --height <int>`: Source image with and height in pixel, respectively
+- `--project_from`: `[Camera, Homography, HDecomp]` while `Camera` requires individual camera parameters, `Homography` and `HDecomp` a respective homography matrix. Multiple values possible.
+- `--evaluate_3d`: If set, evaluates the 3D calibration performance (utilizes the 3D pitch model)
+- `--evaluate_2d`: If set, evaluates the 2D calibration performance from a provided homography (utilizes the 2D pitch model)
+- `--distort`: Evaluate with provided lens distortion parameters. Default: ignored
+- `--taus` (optional): Relevant for TVCalib only: Self-verification from loss. Example, `--taus inf 0.017`
+- `--zeta` (optional): Relevant for `project_from=HDecomp`.
 
-### Config File (hparams) - Example
 
-```json
-{
-    "temporal_dim": 1,
-    "batch_dim": 256,
-    "sigma_scale": 1.96,
-    "object3d": "SoccerPitchLineCircleSegments",
-    "dataset": {
-        "file_match_info": "/nfs/data/soccernet/calibration/test/match_info.json",
-        "extremities_annotations": "data/extremities/gt/valid",
-        "extremities_prefix": "extremities_",
-        "num_points_on_line_segments": 4,
-        "num_points_on_circle_segments": 4,
-        "filter_cam_type": null,
-        "remove_invalid": true
-    },
-    "lens_distortion": false,
-    "image_width": 960,
-    "image_height": 540,
-    "optim_steps": 1000
-}
+### Projection Error via Intersection over Union (Part):
+See `python -m scripts.experiments_wacv23.tex.prepare_iou_results`.
+
+## Datasets
+
+Expected structure for default arguments: 
 ```
-- `num_points_on_line_segments` and `num_points_on_circle_segments`: Randomly samples points from provided extremities. If the number of given points is lower, the input is padded with zeros.
-- `split_circle_central`: If set to `true`, the central sircle is divided into left and right part using a heuristic.
-- `remove_invalid`: Only relevant if `temporal_dim` > 1 as it removes samples from the dataset which can not fulfill the required number of images per stadium and camera type.
-- `extremities_annotations` refers to a folder comprising `<extremities_prefix><image_id>.json` files with following information. 
+./
+├── data
+│   └── datasets
+│       └── wc14-test/match_info_cam_gt.json
+│       └── sncalib-train/match_info_cam_gt.json
+│       └── sncalib-valid/match_info_cam_gt.json
+│       └── sncalib-test/match_info_cam_gt.json
+```
+Download and preparation:
 
-### Output
+### SoccerNet-Calibration-V3:
 
-The folder `output_dir_prefix` contains at least the predicted camera parameters and additional information (e.g., loss, other meta infomration like stadium, image ids) for each batch (`batch_{idx}.pt`) 
-
-
-
-## Segment Localization Part
-Note, that annotations from a segmen localization model or ground-truth annotations can serve es input for the calibration module (`extremities_annotations`) where each sample (`image_id.json`) is represented by: 
-```json
-{
-     "semantic_class_name_1" : [{'x': x1,'y': y1}, {'x': x2,'y': y2}],
-     "semantic_class_name_2": [{'x': x3,'y': y3}, {'x': x4,'y': y4}]
-      ...
-}
+```python
+from SoccerNet.Downloader import SoccerNetDownloader
+mySoccerNetDownloader = SoccerNetDownloader(LocalDirectory="</nfs/data/soccernet>")
+mySoccerNetDownloader.downloadDataTask(task="calibration", split=["train","valid","test"])
 ```
 
-<hr>
-
-## Post-processing, Visualization, and Evaluation
-
-`python -m evaluation.eval_and_summarize` performs post-processing of the output, filtering to remove invalid samples (self-verification), evaluation, and aggregates the results.
-Arguments:
-- `--dir_results`: Directory containing the output of *TVCalib* (folder with `batch_{idx}.pt`)
-- `--dataset_dir`: Corresponding directory containing the ground truth annotations, e.g., `/nfs/data/soccernet/calibration/valid`
-- `--taus`: `Thesholds to ignore probably invalid samples during evaluation, default=[np.inf, 0.03, 0.025, 0.02, 0.017]
-- `--plots_only`: If provided, generate `per_sample_output.json` and some plots only; do not perform evaluation.
-
-### Post-processing
-
-The raw (per-batch) output is flattend (per-sample) and stored in `per_sample_output.json`, where each line represents one sample, for example:
-
-```json
-{
-    "image_ids":"1.jpg",
-    "time_s":0.0433,
-    "mask_lines":[[[false,false,false],[true,true,false],[true,true,true],...]],
-    "mask_circles":[[[false,false,false,false,false,false,false,false],[true,true,true,true,true,true,true,true], ...]],
-    "loss_ndc_lines_distances_raw":[[[0.0,0.0,0.0],[0.010469364,0.0019166876,0.0],[0.0086851967,0.0050904173,0.0100935074],...]],
-    "loss_ndc_lines":0.0047949357,
-    "loss_ndc_circles_distances_raw":[[[0.0,0.0,0.0,0.0],[0.0100957388,0.0031360432,0.0003662109,0.0027729045],...]],
-    "loss_ndc_circles":0.0039352393,
-    "loss_ndc_total":0.008730175,
-    "loss_ndc_lines_distances_max":0.010469364,
-    "loss_ndc_circles_distances_max":0.0100957388,
-    "loss_ndc_total_max":0.010469364,
-    "league":"Fifa WorldCup",
-    "season":"2014",
-    "match":"None",
-    "date":"None",
-    "pan_degrees":-17.578212738,
-    "tilt_degrees":80.8040008545,
-    "roll_degrees":-0.1310900003,
-    "position_meters":[-7.7424321175,57.8480377197,-11.1651697159],
-    "aov_radian":0.4283054769,
-    "aov_degrees":24.540096283,
-    "x_focal_length":2942.6950683594,
-    "y_focal_length":2942.6950683594,
-    "principal_point":[640.0,360.0],
-    "radial_distortion":[0.0,0.0,0.0,0.0,0.0,0.0],
-    "tangential_distortion":[0.0,0.0],
-    "thin_prism_distortion":[0.0,0.0,0.0,0.0],
-    "stadium":"None",
-}
+Already downloaded? May consider to create a soft link for each subset: 
+```bash
+ln -s /nfs/data/soccernet/calibration/valid data/datasets/sncalib-valid
+ln -s /nfs/data/soccernet/calibration/test data/datasets/sncalib-test
+ln -s /nfs/data/soccernet/calibration/train data/datasets/sncalib-train
 ```
 
-### Evaluation
-See [Evaluation](https://github.com/SoccerNet/sn-calibration#evaluation-1) for details on the evaluation metric.
+Camera type annotations
+```bash
+# move annotation file to respective dataset directory
+wget https://tib.eu/cloud/s/483Bqf78dDMcx2H/download/test_match_info_cam_gt.json -O sncalib-test/match_info_cam_gt.json
+wget https://tib.eu/cloud/s/WdSqM3WbyKQ36pm/download/val_match_info_cam_gt.json -O sncalib-valid/match_info_cam_gt.json
 
-`eval_and_summarize` integrates the metric calculation from the official evaluation script, but with modified input pipeline and result aggregation. 
+```
 
-Modifications to the [original version](https://github.com/SoccerNet/sn-calibration#evaluation-1):
-- Replaced the folder of `camera.json` files with `per_sample_output.json`
-- As we can filter out probably invalid samples (based on the total loss) evaluation can automatically performed for a couple of provided thresholds
-- The official evaluation script needs to be executed multiple times (to evaluate different evaluation thresholds (5px, 10px, 20px)). Now, all thresholds are evaluated in one call.
-- trivial way for multiprocessing
-- summarize raw outputs in a `pd.DataFrame`
+### WorldCup 2014 (WC14):
 
-<hr>
+```bash
+mkdir -p data/datasets/wc14-test && cd data/datasets/wc14-test/
+# Images and provided homography matrices from test split
+wget https://nhoma.github.io/data/soccer_data.tar.gz
+tar -zxvf soccer_data.tar.gz raw/test --strip-components 2
+# Our additional segment annotations
+wget https://tib.eu/cloud/s/Jz4x2KsjinEEkwQ/download/wc14-test-additional_annotations_wacv23_theiner.tar -O wc14-test-additional_annotations_wacv23_theiner.tar
+tar xvf wc14-test-additional_annotations_wacv23_theiner.tar
+```
 
+# Requirements
 
-## Resource Files
+### [Conda Environment](https://docs.conda.io/):
 
-- To download the SN-Calib dataset, follow the instructions in https://github.com/SoccerNet/sn-calibration
-- [Camera Type Annotations](https://tvcalib.open-develop.org/cameras.zip): Our manually annotated and predicted camera types for each sample
-- [Segment Localization](https://tvcalib.open-develop.org/extremities.zip): The output of our retrained model (source code and inference script will be available soon)
-
-## Reproduce Results
-- To fully reproduce the results on SN-Calib, run the scripts in `scripts/` for the respective dataset
-- [Results](https://tvcalib.open-develop.org/experiments.zip): Pre-computed results: Results can be inspected via `evaluation/summarize_result_folder_{valid_test}`.
-- Results on WC14: available soon
-- Homography Decomposition from already computed homographies (state-of-the-art approaches, manually annotated): available soon
+```bash
+conda env create -f environment.yml
+conda activate tvcalib
+```
+Depending on your hardware, consider to have a look on https://pytorch.org/ for CPU-only installation or other CUDA versions.

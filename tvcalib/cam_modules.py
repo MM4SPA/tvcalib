@@ -1,113 +1,10 @@
 from typing import Tuple, Dict, Union
-from pprint import pprint
 
 from pytorch_lightning import LightningModule
 import torch
 import kornia
 
-from tvcalib.utils.data_distr import FeatureScalerZScore, FeatureScalerLinear
-
-
-class CameraParameterWLensDistDictLinear(LightningModule):
-    """Holds individual camera parameters including lens distortion parameters as nn.Modul"""
-
-    def __init__(self, cam_distr, dist_distr, device="cpu"):
-        super(CameraParameterWLensDistDictLinear, self).__init__()
-
-        self.cam_distr = cam_distr
-        self._device = device
-
-        # phi raw
-        self.param_dict = torch.nn.ParameterDict(
-            {
-                k: torch.nn.parameter.Parameter(
-                    torch.zeros(
-                        *cam_distr[k]["dimension"],
-                        device=device,
-                    ),
-                    requires_grad=False
-                    if ("no_grad" in cam_distr[k]) and (cam_distr[k]["no_grad"] == True)
-                    else True,
-                )
-                for k in cam_distr.keys()
-            }
-        )
-
-        # denormalization module to get phi_target
-        self.feature_scaler = torch.nn.ModuleDict(
-            {k: FeatureScalerLinear(*cam_distr[k]["minmax"]) for k in cam_distr.keys()}
-        )
-
-        self.dist_distr = dist_distr
-        if self.dist_distr is not None:
-            self.param_dict_dist = torch.nn.ParameterDict(
-                {
-                    k: torch.nn.Parameter(torch.zeros(*dist_distr[k]["dimension"], device=device))
-                    for k in dist_distr.keys()
-                }
-            )
-            # TODO: modify later to dynamically cunstruct a tensor of shape (k_1,k_2,p_1,p_2[,k_3[,k_4,k_5,k_6[,s_1,s_2,s_3,s_4[,\tau_x,\tau_y]]]])
-            #
-
-            self.feature_scaler_dist_coeff = torch.nn.ModuleDict(
-                {k: FeatureScalerZScore(*dist_distr[k]["minmax"]) for k in dist_distr.keys()}
-            )
-
-    def initialize(
-        self,
-        update_dict_cam: Union[Dict[str, Union[float, torch.tensor]], None],
-        update_dict_dist=None,
-    ):
-        """Initializes all camera parameters with zeros and replace specific values with provided values
-
-        Args:
-            update_dict_cam (Dict[str, Union[float, torch.tensor]]): Parameters to be updated
-        """
-
-        for k in self.param_dict.keys():
-            self.param_dict[k].data = torch.zeros(
-                *self.cam_distr[k]["dimension"], device=self._device
-            )
-        if self.dist_distr is not None:
-            for k in self.dist_distr.keys():
-                self.param_dict_dist[k].data = torch.zeros(
-                    *self.dist_distr[k]["dimension"], device=self._device
-                )
-
-        if update_dict_cam is not None and len(update_dict_cam) > 0:
-            for k, v in update_dict_cam.items():
-                self.param_dict[k].data = (
-                    torch.zeros(*self.cam_distr[k]["dimension"], device=self._device) + v
-                )
-        if update_dict_dist is not None:
-            raise NotImplementedError
-
-    def forward(self):
-        phi_dict = {}
-        for k, param in self.param_dict.items():
-            phi_dict[k] = self.feature_scaler[k](torch.tanh(param))
-
-        if self.dist_distr is None:
-            return phi_dict, None
-
-        # This is a vector with 4, 5, 8, 12 or 14 elements with shape :math:`(*, n)` depending on the provided dict of coefficients
-        # assumes dict is ordered according (k_1,k_2,p_1,p_2[,k_3[,k_4,k_5,k_6[,s_1,s_2,s_3,s_4[,\tau_x,\tau_y]]]])
-        psi = torch.stack(
-            [
-                torch.clamp(
-                    self.feature_scaler_dist_coeff[k](torch.tanh(param)),
-                    min=self.dist_distr[k]["minmax"][0],
-                    max=self.dist_distr[k]["minmax"][1],
-                )
-                for k, param in self.param_dict_dist.items()
-            ],
-            dim=-1,  # stack individual features and not arbirary leading dimensions
-        )
-
-        return phi_dict, psi
-
-
-self_calib
+from tvcalib.utils.data_distr import FeatureScalerZScore
 
 
 class CameraParameterWLensDistDictZScore(LightningModule):
@@ -533,6 +430,9 @@ class SNProjectiveCamera:
 
         return mask
 
+    def get_homography_raster(self):
+        return self.P_raster[:, :, [0, 1, 3]].inverse()
+
     def get_rays_world(self, x):
         """_summary_
 
@@ -619,7 +519,7 @@ class SNProjectiveCamera:
 
     def get_parameters(self, true_batch_size=None):
         """
-        Get dict of relevant camera parameters
+        Get dict of relevant camera parameters and homography matrix
         :return: The dictionary
         """
         out_dict = {
@@ -638,6 +538,7 @@ class SNProjectiveCamera:
                 [[self.principal_point] * self.temporal_dim] * self.batch_dim
             ),
         }
+        out_dict["homography"] = self.get_homography_raster().unsqueeze(1) # (B, 1, 3, 3)
 
         # expected for SN evaluation
         out_dict["radial_distortion"] = torch.zeros(self.batch_dim, self.temporal_dim, 6)
