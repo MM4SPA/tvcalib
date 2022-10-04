@@ -18,7 +18,7 @@ selected_papers: true # includes a list of papers marked as "selected={true}"
 social: false  # includes social icons at the bottom of the page
 
 workflow:
-  image: workflow_wide_v2.png
+  image: workflow_wide_v2.svg
 ---
 
 	
