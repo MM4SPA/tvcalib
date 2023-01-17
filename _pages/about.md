@@ -9,7 +9,7 @@ profile:
   image: teaser_wld.png
   image_circular: false # crops the image to make it circular
   caption-top: >
-    <span class="badge font-weight-bold success-color-dark text-uppercase align-middle"> TLTR </span><b>  Learn individual camera parameters from segment correspondences (lines, point clouds) of a known calibration object by iteratively minimizing the segment reprojection error without relying on keypoint correspondences.</b>
+    <span class="badge font-weight-bold success-color-dark text-uppercase align-middle"> TLDR </span><b>  Learn individual camera parameters from segment correspondences (lines, point clouds) of a known calibration object by iteratively minimizing the segment reprojection error without relying on keypoint correspondences.</b>
   caption-bottom: >
     <p>$$\hat \phi=\{FoV=41.9°, \mathbf{t}=[-0.1\,m, 60.7\,m, -21.2\,m], pan=14.3°, tilt=61.9°, roll=-0.1°\}\quad \hat \psi=\{k_1=0.198, k_2=0.056\}$$</p>
 
