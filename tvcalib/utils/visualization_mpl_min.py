@@ -25,10 +25,13 @@ def init_figure(img_width, img_height, img_delta_w=0.2, img_delta_h=0.1):
 
 
 def draw_reprojection(ax, object3d, cam, ratio_width=1, ratio_height=1, dist_circles=0.25, kwargs={"alpha": 0.5, "linewidth": 5}):
+    # ndc is an abbreviation for Normalized Device Coordinates
+    # for more details, refer https://carmencincotti.com/2022-05-02/homogeneous-coordinates-clip-space-ndc/#ndc
     ndc_point = torch.tensor([0., 0., 1.]).view(1, 3, 1)
     point_3d = torch.bmm(cam.P_ndc.pinverse(), ndc_point)
     principal_3d = kornia.geometry.conversions.convert_points_from_homogeneous(point_3d.transpose(1, 2))
 
+    # original projection
     lines3d = object3d.line_segments.transpose(0, 1).transpose(-1, -2)
     points_px = torch.zeros((23, 2, 2))
     for lidx in range(23):
@@ -36,6 +39,7 @@ def draw_reprojection(ax, object3d, cam, ratio_width=1, ratio_height=1, dist_cir
             line3d = lines3d[lidx]
             points_px[lidx, :, :] = cam.project_point2pixel(line3d, lens_distortion=False).cpu()[0, 0]
 
+    # Exception handling for camera back side problem
     for lidx in range(23):
         line3d = lines3d[lidx]
         if (torch.dot(line3d[0] - cam.position.view(3), principal_3d.view(3) - cam.position.view(3)) < 0) and \
@@ -46,6 +50,7 @@ def draw_reprojection(ax, object3d, cam, ratio_width=1, ratio_height=1, dist_cir
         elif torch.dot(line3d[1] - cam.position.view(3), principal_3d.view(3) - cam.position.view(3)) < 0:
             points_px[lidx][1] = points_px[lidx][0] + 10 * (points_px[lidx][0] - points_px[lidx][1])
 
+    # draw lines
     for lidx, line_name in enumerate(object3d.line_segments_names):
         line2d = Line2D(
             points_px[lidx, :, 0]*ratio_width,
@@ -55,6 +60,7 @@ def draw_reprojection(ax, object3d, cam, ratio_width=1, ratio_height=1, dist_cir
         )
         ax.add_line(line2d)
 
+    # draw circles
     points3d_circle = {
         k: torch.from_numpy(np.stack(v, axis=0)).float()
         for k, v in object3d._field_sncalib.sample_field_points(
