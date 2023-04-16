@@ -1,6 +1,6 @@
 # Project O
 
-<iframe width="1280" height="720" src="https://www.youtube.com/embed/kWDxRRBbw0A" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+[![Video Label](http://img.youtube.com/vi/kWDxRRBbw0A/0.jpg)](https://www.youtube.com/embed/kWDxRRBbw0A)
 
 You can check the code used in the project above in the "apply_to_video.py" file. 
 
