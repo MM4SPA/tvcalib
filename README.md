@@ -1,7 +1,7 @@
 # Project O
 
 [![Video Label](http://img.youtube.com/vi/kWDxRRBbw0A/0.jpg)](https://www.youtube.com/embed/kWDxRRBbw0A)
-
+https://youtu.be/kWDxRRBbw0A
 You can check the code used in the project above in the "apply_to_video.py" file. 
 
 <hr>
