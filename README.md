@@ -1,6 +1,6 @@
 # Project O
 
-<iframe width="1280" height="720" src="https://www.youtube.com/embed/kWDxRRBbw0A" title="EP 0: 인공지능? 그게 스포츠랑 뭔 상관인데?" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+<iframe width="1280" height="720" src="https://www.youtube.com/embed/kWDxRRBbw0A" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 You can check the code used in the project above in the "apply_to_video.py" file. 
 
