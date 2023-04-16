@@ -1,6 +1,6 @@
 # Project O
 
-[![Video Label](http://img.youtube.com/vi/kWDxRRBbw0A/0.jpg)]([https://www.youtu.be/kWDxRRBbw0A](https://www.youtube.com/watch?v=kWDxRRBbw0A))
+[![Video Label](http://img.youtube.com/vi/kWDxRRBbw0A/0.jpg)](https://www.youtube.com/watch?v=kWDxRRBbw0A)
 
 You can check the code used in the project above in the "apply_to_video.py" file. 
 
