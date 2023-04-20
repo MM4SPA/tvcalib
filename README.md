@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Project](https://img.shields.io/badge/jtheiner.github.io-TVCalib-538135.svg?style=for-the-badge)](https://jtheiner.github.io/tvcalib/)
+[![Project](https://img.shields.io/badge/mm4spa.github.io-TVCalib-538135.svg?style=for-the-badge)](https://mm4spa.github.io/tvcalib/)
 [![Conference](https://img.shields.io/badge/WACV-2023-6b8bc7.svg?style=for-the-badge)](https://arxiv.org/abs/2207.11709)
 [![arXiv](https://img.shields.io/badge/arXiv-2207.11709-b31b1b.svg?style=for-the-badge)](https://arxiv.org/abs/2207.11709)
 
@@ -19,7 +19,7 @@
 
 
 # Inference
-Given a bunch of images, this [jupyter notebook](`inference.ipynb`) applies semantic segmentation, point selection, estimation of camera parameters, and visualization. The pretrained segmentation model can be downloaded here:
+`inference.ipynb`: Given a bunch of images, semantic segmentation, point selection, estimation of camera parameters, and visualization is applied. The pretrained segmentation model can be downloaded here:
 ```bash
 mkdir data/segment_localization 
 wget https://tib.eu/cloud/s/x68XnTcZmsY4Jpg/download/train_59.pt -O data/segment_localization/train_59.pt
